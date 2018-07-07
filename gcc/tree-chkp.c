@@ -1,5 +1,5 @@
 /* Pointer Bounds Checker insrumentation pass.
-   Copyright (C) 2014-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2018 Free Software Foundation, Inc.
    Contributed by Ilya Enkovich (ilya.enkovich@intel.com)
 
 This file is part of GCC.
@@ -1688,6 +1688,10 @@ chkp_find_bounds_for_elem (tree elem, tree *all_bounds,
     }
 }
 
+/* Maximum number of elements to check in an array.  */
+
+#define CHKP_ARRAY_MAX_CHECK_STEPS    4096
+
 /* Fill HAVE_BOUND output bitmap with information about
    bounds requred for object of type TYPE.
 
@@ -1733,7 +1737,9 @@ chkp_find_bound_slots_1 (const_tree type, bitmap have_bound,
 	  || integer_minus_onep (maxval))
 	return;
 
-      for (cur = 0; cur <= TREE_INT_CST_LOW (maxval); cur++)
+      for (cur = 0;
+	  cur <= MIN (CHKP_ARRAY_MAX_CHECK_STEPS, TREE_INT_CST_LOW (maxval));
+	  cur++)
 	chkp_find_bound_slots_1 (etype, have_bound, offs + cur * esize);
     }
 }
@@ -2276,8 +2282,7 @@ chkp_build_returned_bound (gcall *call)
      it separately.  */
   if (fndecl
       && DECL_BUILT_IN_CLASS (fndecl) == BUILT_IN_NORMAL
-      && (DECL_FUNCTION_CODE (fndecl) == BUILT_IN_ALLOCA
-	  || DECL_FUNCTION_CODE (fndecl) == BUILT_IN_ALLOCA_WITH_ALIGN))
+      && ALLOCA_FUNCTION_CODE_P (DECL_FUNCTION_CODE (fndecl)))
     {
       tree size = gimple_call_arg (call, 0);
       gimple_stmt_iterator iter = gsi_for_stmt (call);
@@ -2763,6 +2768,7 @@ chkp_compute_bounds_for_assignment (tree node, gimple *assign)
     case FLOAT_EXPR:
     case REALPART_EXPR:
     case IMAGPART_EXPR:
+    case POINTER_DIFF_EXPR:
       /* No valid bounds may be produced by these exprs.  */
       bounds = chkp_get_invalid_op_bounds ();
       break;
@@ -4232,18 +4238,12 @@ chkp_copy_bounds_for_assign (gimple *assign, struct cgraph_edge *edge)
 	{
 	  tree fndecl = gimple_call_fndecl (stmt);
 	  struct cgraph_node *callee = cgraph_node::get_create (fndecl);
-	  struct cgraph_edge *new_edge;
 
 	  gcc_assert (chkp_gimple_call_builtin_p (stmt, BUILT_IN_CHKP_BNDSTX)
 		      || chkp_gimple_call_builtin_p (stmt, BUILT_IN_CHKP_BNDLDX)
 		      || chkp_gimple_call_builtin_p (stmt, BUILT_IN_CHKP_BNDRET));
 
-	  new_edge = edge->caller->create_edge (callee,
-						as_a <gcall *> (stmt),
-						edge->count,
-						edge->frequency);
-	  new_edge->frequency = compute_call_stmt_bb_frequency
-	    (edge->caller->decl, gimple_bb (stmt));
+	  edge->caller->create_edge (callee, as_a <gcall *> (stmt), edge->count);
 	}
       gsi_prev (&iter);
     }
