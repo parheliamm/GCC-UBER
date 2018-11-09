@@ -1,3 +1,35 @@
+2018-10-26  Release Manager
+
+	* GCC 6.5.0 released.
+
+2018-06-02  Eric Botcazou  <ebotcazou@adacore.com>
+
+	Backport from mainline
+	2018-05-31  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gcc-interface/trans.c (Call_to_gnu): If this is a function call and
+	there is no target, also create a temporary for the return value for
+	an allocator if the type is an unconstrained record type with default
+	discriminant.
+
+2018-03-06  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gcc-interface/trans.c (convert_with_check): Fix typo in the condition
+	guarding the overflow check emitted for the upper bound of a floating-
+	point conversion.
+
+2017-12-14  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gcc-interface/decl.c (gnat_to_gnu_field): Do not set the alignment
+	of the enclosing record type if it is not already set.
+
+2017-11-10  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gcc-interface/utils.c (convert) <RECORD_TYPE>: Add comment and do
+	not fall through to the next case.
+	<ARRAY_TYPE>: Deal specially with a dereference from another array
+	type with the same element type.
+
 2017-09-15  Martin Liska  <mliska@suse.cz>
 
 	Backport from mainline
